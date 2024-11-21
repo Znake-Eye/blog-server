@@ -2,7 +2,10 @@ import {
     Body,
     JsonController,
     Post,
+    Get,
     Res,
+    NotFoundError,
+    UnauthorizedError,
 } from "routing-controllers";
 import { Response } from "express";
 import { PrismaClient } from "@prisma/client";
@@ -125,6 +128,16 @@ export class AuthController {
         }
     }
 
+    @Get('/something')
+    doSomething(@Res() res: Response) {
+        console.log('do something controller');
+        // throw new NotFoundError('rout not found');
+        throw new UnauthorizedError('cannot access to data');
+        // throw new Error('Hello world');
+        // return res.json({
+        //     data: 'Hello world'
+        // })
+    }
 
 
 }

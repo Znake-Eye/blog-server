@@ -13,7 +13,7 @@ import {
 } 
 from "routing-controllers";
 import { Response } from "express";
-import { authMiddleware } from "../middleware/AuthMiddleware";
+import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { TUser, TPost } from "../types";
 import { resultStatus } from "../enums";
 import { PrismaClient } from "@prisma/client";
@@ -27,7 +27,7 @@ const postSchema = Joi.object({
 });
   
 @JsonController("/posts")
-@UseBefore(authMiddleware)
+@UseBefore(AuthMiddleware)
 export class PostController {
 
     @Get("/")

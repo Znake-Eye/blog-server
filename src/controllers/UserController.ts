@@ -11,16 +11,16 @@ import {
     QueryParam
 } from "routing-controllers";
 import { Response } from "express";
-import { authMiddleware } from "../middleware/AuthMiddleware";
 import { PrismaClient } from "@prisma/client";
 import { TUser } from "../types";
 import { encryptPassword } from "../utils/encryptPassword";
 import { resultStatus } from "../enums";
+import { AuthMiddleware } from "../middleware/AuthMiddleware";
 
 const prisma = new PrismaClient();
 
 @JsonController("/users")
-@UseBefore(authMiddleware)
+@UseBefore(AuthMiddleware)
 export class UserController {
 
     @Get("/")
@@ -89,7 +89,7 @@ export class UserController {
     }
 
     @Get("/:id")
-    async getUserByid(@Param("id") id: number, @Res() res: Response) {
+    async getUserById(@Param("id") id: number, @Res() res: Response) {
         
         try {
             const result = await prisma.user.findUnique({
