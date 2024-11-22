@@ -11,8 +11,8 @@ const currentUser = async (action: Action) => {
 
     try {
         const decode = jwt.verify(token, secret);
-        console.log('current user');
-        console.log(decode);
+        // console.log('current user');
+        // console.log(decode);
         return decode;
     } catch (error) {
         console.log(error);

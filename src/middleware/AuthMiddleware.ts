@@ -11,8 +11,6 @@ export class AuthMiddleware implements ExpressMiddlewareInterface {
     async use(req: any, res: any, next: (err?: any) => any) {
         const authHeader = req.headers.authorization;
 
-        console.log('middleware work');
-
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             throw new UnauthorizedError('Token is missed');
         }
@@ -38,8 +36,6 @@ export class AuthMiddleware implements ExpressMiddlewareInterface {
                 throw new UnauthorizedError("UnAuthorized to access");
             }
 
-            console.log('Authorized to access');
-            console.log(decode);
             next();
 
         } catch (error) {

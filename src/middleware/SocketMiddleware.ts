@@ -29,7 +29,6 @@ export default async function socketAuthMiddleware(socket: Socket, next: (err?: 
             return next(new UnauthorizedError());
         }
 
-        console.log('authorize access');
         next();
     } catch (error) {
         console.log('error in socket middleware: ',error);

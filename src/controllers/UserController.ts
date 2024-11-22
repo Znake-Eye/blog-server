@@ -8,10 +8,11 @@ import {
     Put,
     Delete,
     Res,
-    QueryParam
+    QueryParam,
+    CurrentUser
 } from "routing-controllers";
 import { Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, User } from "@prisma/client";
 import { TUser } from "../types";
 import { encryptPassword } from "../utils/encryptPassword";
 import { resultStatus } from "../enums";
@@ -26,10 +27,16 @@ export class UserController {
     @Get("/")
     async getAll(
         @QueryParam("pageSize") pageSize: number = 10, 
-        @Res() response: Response
+        @Res() response: Response,
+        @CurrentUser() user: User,
     ) {
         const allUsers = await prisma.user.findMany({
-            where: { username: { not: 'root'}},
+            where: {
+                AND: [
+                    { username: { not: 'root'}, },
+                    { id: { not: user?.id } }
+                ]
+            },
             select: {
                 id: true,
                 username: true,
