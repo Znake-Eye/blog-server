@@ -54,13 +54,22 @@ export class MessageController {
         } 
     }
 
-    @OnMessage('save')
-    save(@ConnectedSocket() socket: Socket, @MessageBody() message: any) {
+    @OnMessage('send_message')
+    save(@ConnectedSocket() socket: Socket, @MessageBody() messageData: any) {
         // console.log('recieved message : ', message);
-        this.socket.adminIo.emit('saved', {
-            data: message,
-            message: 'Save data succesfully',
+
+        const { roomId , message, sender} = messageData;
+        if(!roomId) return;
+
+        this.socket.adminIo.to(roomId).emit('sended_message', {
+            from: sender,
+            message
         });
+
+        // this.socket.adminIo.emit('saved', {
+        //     data: message,
+        //     message: 'Save data succesfully',
+        // });
         
     }
 }
