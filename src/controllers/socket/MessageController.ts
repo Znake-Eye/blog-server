@@ -23,12 +23,12 @@ export class MessageController {
 
     @OnConnect()
     connection(@ConnectedSocket() socket: Socket) {
-        console.log('client connected');
+        console.log('client connected with id: ', socket.id);
     }
 
     @OnDisconnect()
     disconnect(@ConnectedSocket() socket: Socket) {
-        console.log('client disconnect');
+        console.log('client disconnect with id: ', socket.id);
     }
 
     @OnMessage('join_room')
@@ -56,15 +56,26 @@ export class MessageController {
 
     @OnMessage('send_message')
     save(@ConnectedSocket() socket: Socket, @MessageBody() messageData: any) {
-        // console.log('recieved message : ', message);
 
-        const { roomId , message, sender} = messageData;
+        const { roomId , message, sender, receiver} = messageData;
+        const { id: receiverId } = receiver;
         if(!roomId) return;
 
-        this.socket.adminIo.to(roomId).emit('sended_message', {
+        const receiverRoomId = receiverId?.toString();
+        const senderRoomId = sender?.id?.toString();
+
+        const socketRooms = Array.from(socket.rooms);
+        if(!socketRooms.includes(receiverRoomId)) {
+            socket.join(receiverRoomId);
+        }
+        console.log('socket room: ',socket.rooms);
+
+        const messageResponse = {
             from: sender,
             message
-        });
+        }
+
+        this.socket.adminIo.to(receiverRoomId).to(senderRoomId).emit('sended_message', messageResponse);
 
         // this.socket.adminIo.emit('saved', {
         //     data: message,
