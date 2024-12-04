@@ -43,4 +43,5 @@ const serverInstance = httpServer.listen(port, () => {
 })
 
 GlobalSocketServer.getInstance(serverInstance);
-
+console.log('globalSocketServer');
+console.log(GlobalSocketServer.getInstance());
