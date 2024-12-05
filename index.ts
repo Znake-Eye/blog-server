@@ -27,6 +27,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended : false}));
 
+const rootDir = process.cwd();
+app.use('/uploads', express.static(path.join(rootDir, 'uploads')));
+
 useExpressServer(app, {
     routePrefix: "/api",
     currentUserChecker: currentUser,
