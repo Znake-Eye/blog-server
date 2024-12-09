@@ -1,4 +1,13 @@
-import { Body, JsonController, Post, Req, Res, UseBefore, CurrentUser, Get } from "routing-controllers";
+import { 
+    Body, 
+    JsonController, 
+    Post, 
+    Req, 
+    Res, 
+    UseBefore, 
+    CurrentUser, 
+    Get 
+} from "routing-controllers";
 import { Response } from "express";
 import { PrismaClient, User } from "@prisma/client";
 import fs from "fs";
@@ -15,7 +24,6 @@ const productSchema = Joi.object({
 const prisma = new PrismaClient();
 
 const rootDir = process.cwd();
-
 const storeFolder = path.join(rootDir, 'uploads', 'products');
 
 const storage = multer.diskStorage({
@@ -43,11 +51,10 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-@JsonController('/upload')
+@JsonController('/product')
 @UseBefore(AuthMiddleware)
-
 export class UploadController {
-    @Post('/image')
+    @Post('/')
     @UseBefore(upload.single('file'))
     async createProduct(@Body() body: any, @Req() req: any, @CurrentUser() user: User, @Res() res: Response) {
 
@@ -82,17 +89,9 @@ export class UploadController {
                 message: error?.message
             });
         }
-
-        // console.log('req file: ', req?.file);
-        // console.log('current user: ', user);
-        // console.log('filename: ', req?.file?.filename);
-        // console.log('my request body: ', body);
-        // return res.json({
-        //     'message': 'upload success',
-        // });
     }
 
-    @Get('/products')
+    @Get('/')
     async getProducts(@Res() res: Response) {
         try {
             const response = await prisma.product.findMany({});
