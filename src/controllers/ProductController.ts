@@ -6,7 +6,12 @@ import {
     Res, 
     UseBefore, 
     CurrentUser, 
-    Get 
+    Get, 
+    Put,
+    Param,
+    UnauthorizedError,
+    BadRequestError,
+    Delete
 } from "routing-controllers";
 import { Response } from "express";
 import { PrismaClient, User } from "@prisma/client";
@@ -14,12 +19,18 @@ import fs from "fs";
 import path from "path";
 import multer from "multer";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
+import { removeFile } from "../utils";
 import Joi from "joi";
 
 const productSchema = Joi.object({
     name: Joi.string().required(),
     description: Joi.string().optional(),
 });
+
+type TProductBody = {
+    name: string;
+    description: string;
+}
 
 const prisma = new PrismaClient();
 
@@ -60,10 +71,7 @@ export class UploadController {
 
         const { error } = productSchema.validate(body);
         if (error) {
-            return res.status(400).json({
-                success: false,
-                message: error?.details[0]?.message
-            });
+            throw new BadRequestError(error?.details[0]?.message);
         }
 
         const { name, description } = body;
@@ -90,7 +98,6 @@ export class UploadController {
             });
         }
     }
-
     @Get('/')
     async getProducts(@Res() res: Response) {
         try {
@@ -103,6 +110,102 @@ export class UploadController {
             return res.status(500).json({
                 success: false,
                 error: error?.message
+            });
+        }
+    }
+    @Put('/:id')
+    @UseBefore(upload.single('file'))
+    async updateProduct(
+        @Param("id") id: number,
+        @Body({ required: true}) body: any, 
+        @Req() req: any, 
+        @CurrentUser() user: User, 
+        @Res() res: Response
+    ) {
+        try {
+
+            const product = await prisma.product.findUnique({
+                where: { id }
+            });
+
+            if (!product) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Product not founded.'
+                });
+            }
+    
+            if (user.id !== product.userId) {
+                throw new UnauthorizedError('Unauthorize to edit this product.');
+            }
+
+            const { error } = productSchema.validate(body);
+            if (error) {
+                throw new BadRequestError(error?.details[0]?.message);
+            }
+
+            const fileName = req?.file?.filename || '';
+            const data: any = {
+                name: body.name,
+                description: body.description,
+                ...(fileName && { image: fileName })
+            };
+            if (fileName && product.image) {
+                const lastImageLocation = path.join(storeFolder, product.image);
+                const isFileRemoved = removeFile(lastImageLocation);
+                console.log(`file has been removed: ${isFileRemoved}`);
+            }
+
+            const editedProduct = await prisma.product.update({
+                where: { id },
+                data
+            });
+    
+            return res.status(200).json({
+                success: true,
+                message: 'Edited product successfully',
+                data: editedProduct
+            });
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: error?.message
+            });
+        }
+    }
+
+    @Delete('/:id')
+    async deleteProduct(@Param('id') id: number, @CurrentUser() user: User, @Res() res: Response) {
+        try {
+            const product = await prisma.product.findUnique({
+                where: { id }
+            });
+            if (!product) {
+                return res.status(400).json({ success: false, message: 'Product not founded.'});
+            }
+            if (product.userId !== user.id) {
+                throw new UnauthorizedError('Unauthorize to delete this product.')
+            }
+
+            if (product.image) {
+                const imageLocation = path.join(storeFolder, product.image);
+                const isFileRemoved = removeFile(imageLocation);
+                console.log(`file has been removed: ${isFileRemoved}`);
+            }
+
+            await prisma.product.delete({
+                where: { id }
+            });
+            
+            return res.status(200).json({
+                success: true,
+                message: 'Product has been deleted successfully.'
+            })
+
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: error?.message
             });
         }
     }

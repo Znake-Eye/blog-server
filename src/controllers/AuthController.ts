@@ -18,7 +18,15 @@ import { encryptPassword } from "../utils/encryptPassword";
 const schema = Joi.object({
     username: Joi.string().min(3).required(),
     password: Joi.string().min(3).required()
-})
+});
+
+const createUserSchema = Joi.object({
+    username: Joi.string().min(3).required(),
+    password: Joi.string().min(3).required(),
+    email: Joi.string().optional(),
+    phone: Joi.string().optional(),
+});
+
 const prisma = new PrismaClient();
 
 @JsonController("/user")
@@ -78,10 +86,18 @@ export class AuthController {
     }
 
     @Post('/signup')
-    async createUserAccount(@Body({ required: true }) req: {username: string, password: string}, @Res() res: Response) {
-        const { username, password } = req;
+    async createUserAccount(
+        @Body({ required: true }) 
+            req: {
+                username: string, password: string,
+                email: string,
+                phone: string,
+            }, 
+        @Res() res: Response
+    ) {
+        const { username, password, email, phone } = req;
         try {
-            const { error } = schema.validate(req);
+            const { error } = createUserSchema.validate(req);
             if(error) {
                 return res.status(400).json({
                     message: error.details[0].message
@@ -101,6 +117,8 @@ export class AuthController {
                 data: {
                     username: username,
                     password: hashedPassword,
+                    ...(email && { email: email }),
+                    ...(phone && { phone: phone })
                 }
             });
             const token = auth.createAccessToken(createUser.id, createUser.username);
