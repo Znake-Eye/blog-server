@@ -130,7 +130,9 @@ export class AuthController {
             const data = {
                 id: updateUser.id,
                 username: updateUser.username,
-                roleType: updateUser.roleType
+                roleType: updateUser.roleType,
+                email: email || '',
+                phone: phone || ''
             }
 
             return res.status(200).json({
