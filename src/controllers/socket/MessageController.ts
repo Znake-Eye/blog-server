@@ -35,27 +35,21 @@ export class MessageController {
     joinRoom(
         @ConnectedSocket() socket: Socket, 
         @MessageBody() message: { roomId: string }, 
-        @SocketIO() io: Socket
     ) {
         const { roomId } = message;
         if(roomId) {
-            socket.join(roomId);
-            console.log(`A client join a room with id: ${roomId}`);
-            this.socket.adminIo.to(roomId).emit('joined_room', {
+            this.socket.userConnections[roomId] = socket.id;
+            console.log('userConnection: ', this.socket.userConnections);
+
+            socket.emit('joined_room', {
                 success: true,
                 message: `${socket.id} joined the room with roomId: ${roomId}`,
             });
-            // io.to(roomId).emit('joined_room', {
-            //     success: true,
-            //     message: `${socket.id} joined the room with roomId: ${roomId}`,
-            // });
-
-            console.log('all roomid: ', socket.rooms);
         } 
     }
 
     @OnMessage('send_message')
-    save(@ConnectedSocket() socket: Socket, @MessageBody() messageData: any) {
+    save(@MessageBody() messageData: any) {
 
         const { roomId , message, sender, receiver} = messageData;
         const { id: receiverId } = receiver;
@@ -64,23 +58,16 @@ export class MessageController {
         const receiverRoomId = receiverId?.toString();
         const senderRoomId = sender?.id?.toString();
 
-        const socketRooms = Array.from(socket.rooms);
-        if(!socketRooms.includes(receiverRoomId)) {
-            socket.join(receiverRoomId);
-        }
-        console.log('socket room: ',socket.rooms);
+        const receiverSocketId = this.socket.userConnections[receiverRoomId];
+        const senderSocketId = this.socket.userConnections[senderRoomId];
 
         const messageResponse = {
             from: sender,
             message
         }
 
-        this.socket.adminIo.to(receiverRoomId).to(senderRoomId).emit('sended_message', messageResponse);
-
-        // this.socket.adminIo.emit('saved', {
-        //     data: message,
-        //     message: 'Save data succesfully',
-        // });
+        this.socket.adminIo.to(receiverSocketId)
+            .to(senderSocketId).emit('sended_message', messageResponse);
         
     }
 }

@@ -9,6 +9,7 @@ export class GlobalSocketServer {
     private io: SocketServer;
     public adminIo: any;
     public userIo: any;
+    public userConnections: any = {}
     constructor(httpServer: HttpServer) {
         // const allowIP = process.env.ALLOW_IP ? JSON.parse(process.env.ALLOW_IP) || [];
         const allowIP = process.env.ALLOW_IP;
