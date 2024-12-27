@@ -19,7 +19,21 @@ export class CategoryController {
         try {
             const data = await prisma.favorite.findMany({
                 where: {
-                    userId: user?.id
+                    userId: user.id
+                },
+                select: {
+                    id: true,
+                    status: true,
+                    product: {
+                        select: {
+                            id: true,
+                            name: true,
+                            description: true,
+                            price: true,
+                            discount: true,
+                            image: true,
+                        }
+                    }
                 }
             });
             return res.status(200).json({
@@ -65,14 +79,15 @@ export class CategoryController {
 
                 return res.status(201).json({
                     success: true,
-                    message: 'You have disliked the product.'
+                    message: 'You have disliked the product.',
+                    type: 'dislike',
                 });
 
             } else {
 
                 const result = await prisma.favorite.create({
                     data: {
-                        userId: user?.id,
+                        userId: user.id,
                         productId: productId
                     }
                 });
@@ -80,6 +95,7 @@ export class CategoryController {
                 return res.status(201).json({
                     success: true,
                     message: 'You have liked the product.',
+                    type: 'like',
                     result,
                 });
             }

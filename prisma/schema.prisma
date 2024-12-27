@@ -61,7 +61,7 @@ model Product {
   categoryId Int?
   name String
   description String?
-  price Float?
+  price Float? @default(0)
   discount Float @default(0)
   stock_status StockSTatus @default(INSTOCK)
   image String?

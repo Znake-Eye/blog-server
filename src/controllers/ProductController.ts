@@ -21,6 +21,7 @@ import multer from "multer";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { removeFile } from "../utils";
 import Joi from "joi";
+import { TUser } from "../types";
 
 const productSchema = Joi.object({
     name: Joi.string().required(),
@@ -99,9 +100,39 @@ export class UploadController {
         }
     }
     @Get('/')
-    async getProducts(@Res() res: Response) {
+    async getProducts(@CurrentUser() user: TUser ,@Res() res: Response) {
         try {
-            const response = await prisma.product.findMany({});
+            const response = await prisma.product.findMany({
+                select: {
+                    id: true,
+                    name: true,
+                    image: true,
+                    price: true,
+                    stock_status: true,
+                    createdAt: true,
+                    discount: true,
+                    user: {
+                        select: {
+                            id: true,
+                            image: true,
+                            username: true
+                        }
+                    },
+                    favorites: {
+                        where: {
+                            userId: user.id
+                        },
+                        select: {
+                            status: true
+                        }
+                    },
+                    // _count: {
+                    //     select: {
+                    //         favorites: true
+                    //     }
+                    // }
+                }
+            });
             return res.status(200).json({
                 success: true,
                 data: response,
