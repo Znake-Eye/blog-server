@@ -6,7 +6,7 @@ import {
     OnDisconnect, 
     OnMessage, 
     SocketController, 
-    SocketIO 
+    SocketIO,
 } from "socket-controllers";
 import { Socket } from "socket.io";
 import { GlobalSocketServer } from "../../socketServer/SocketServer";
@@ -22,13 +22,29 @@ export class MessageController {
     }
 
     @OnConnect()
-    connection(@ConnectedSocket() socket: Socket) {
+    async connection(@ConnectedSocket() socket: Socket) {
+        // console.log('user: ', user);
         console.log('client connected with id: ', socket.id);
     }
 
     @OnDisconnect()
     disconnect(@ConnectedSocket() socket: Socket) {
+
+        for (const [roomKey, socketRoomsId] of this.socket.clientConnections) {
+            if (socketRoomsId.has(socket.id)) {
+
+                socketRoomsId.delete(socket.id);
+
+                if (this.socket.clientConnections.get(roomKey).size === 0) {
+                    this.socket.clientConnections.delete(roomKey);
+                }
+
+                break;
+            }
+        }
+
         console.log('client disconnect with id: ', socket.id);
+        console.log('client connections',this.socket.clientConnections);
     }
 
     @OnMessage('join_room')
@@ -38,8 +54,13 @@ export class MessageController {
     ) {
         const { roomId } = message;
         if(roomId) {
-            this.socket.userConnections[roomId] = socket.id;
-            console.log('userConnection: ', this.socket.userConnections);
+
+            if (!this.socket.clientConnections.has(roomId)) {
+                this.socket.clientConnections.set(roomId, new Set());
+            }
+
+            this.socket.clientConnections.get(roomId).add(socket.id);
+            console.log('client connection: ', this.socket.clientConnections);
 
             socket.emit('joined_room', {
                 success: true,
@@ -51,23 +72,28 @@ export class MessageController {
     @OnMessage('send_message')
     save(@MessageBody() messageData: any) {
 
-        const { roomId , message, sender, receiver} = messageData;
-        const { id: receiverId } = receiver;
-        if(!roomId) return;
+        const { message, sender, receiver} = messageData;
 
-        const receiverRoomId = receiverId?.toString();
-        const senderRoomId = sender?.id?.toString();
+        if (sender?.id && receiver?.id) {
+            const { id: receiverId } = receiver;
 
-        const receiverSocketId = this.socket.userConnections[receiverRoomId];
-        const senderSocketId = this.socket.userConnections[senderRoomId];
+            const receiverRoomId = receiverId?.toString();
+            const senderRoomId = sender?.id?.toString();
 
-        const messageResponse = {
-            from: sender,
-            message
+            const receiverSocketsId = this.socket.clientConnections.get(receiverRoomId);
+            const senderSocketsId = this.socket.clientConnections.get(senderRoomId);
+            const allSocketIds = [...receiverSocketsId, ...senderSocketsId];
+
+            const messageResponse = {
+                from: sender,
+                message
+            }
+
+            allSocketIds.forEach((socketId) => {
+                this.socket.adminIo.to(socketId).emit('sended_message', messageResponse);
+            });
         }
-
-        this.socket.adminIo.to(receiverSocketId)
-            .to(senderSocketId).emit('sended_message', messageResponse);
         
+
     }
 }

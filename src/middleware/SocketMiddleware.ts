@@ -8,7 +8,6 @@ const secretKey = process.env.JWT_SECRET;
 
 export default async function socketAuthMiddleware(socket: Socket, next: (err?: any) => void) {
     try {
-        console.log('socket auth work');
         const token = socket.handshake.headers.token as string;
         
         if (!token) {
