@@ -28,11 +28,6 @@ const productSchema = Joi.object({
     description: Joi.string().optional(),
 });
 
-type TProductBody = {
-    name: string;
-    description: string;
-}
-
 const prisma = new PrismaClient();
 
 const rootDir = process.cwd();

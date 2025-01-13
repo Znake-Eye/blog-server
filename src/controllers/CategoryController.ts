@@ -1,26 +1,43 @@
 import { Response } from "express";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
-import { JsonController, Post, UseBefore, Get, Res, Body, Put, Param, Delete } from "routing-controllers";
-import { PrismaClient } from "@prisma/client";
+import { JsonController, Post, UseBefore, Get, Res, Body, Put, Param, Delete, QueryParam } from "routing-controllers";
+import { CategoryType, PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 import Joi from "joi";
 
 const createSchema = Joi.object({
-    name: Joi.string().required()
+    name: Joi.string().required(),
+    description: Joi.string().allow('').optional(),
+    type: Joi.string().valid(CategoryType.BLOG, CategoryType.PRODUCT).required(),
 });
+
 
 @JsonController('/category')
 @UseBefore(AuthMiddleware)
 export class CategoryController {
 
     @Get('/')
-    async getCategory(@Res() res: Response) {
+    async getCategory(@QueryParam('type') type: CategoryType, @QueryParam('search') search: string, @Res() res: Response) {
         try {
-            const data = await prisma.category.findMany({});
+            const filter: any[] = [
+                { name: { contains: search, mode: 'insensitive'} },
+            ];
+
+            if (type) {
+                filter.push({ type: type });
+            }
+
+            const data = await prisma.category.findMany({
+                where: {
+                    AND: filter
+                }
+            });
+
             return res.status(200).json({
                 success: true,
                 data
             });
+
         } catch (error) {
             return res.status(500).json({
                 success: false,
@@ -30,7 +47,7 @@ export class CategoryController {
     }
 
     @Post('/')
-    async createCategory(@Body() body: { name: string } ,@Res() res: Response) {
+    async createCategory(@Body() body: { name: string, description: string, type: CategoryType } ,@Res() res: Response) {
 
         try {
             const { error } = createSchema.validate(body);
@@ -41,10 +58,14 @@ export class CategoryController {
                 });
             }
 
-            const { name } = body;
+            const { name, description, type } = body;
 
             await prisma.category.create({
-                data: {  name }
+                data: {  
+                    name,
+                    description,
+                    ...(type === 'PRODUCT' && { type: CategoryType.PRODUCT })
+                 }
             });
 
             return res.status(201).json({
@@ -53,6 +74,14 @@ export class CategoryController {
             });
 
         } catch (error) {
+
+            if (error?.code == 'P2002') {
+                return res.status(400).json({
+                    success: false,
+                    message: `${body?.name} category already exist`
+                });
+            }
+
             return res.status(500).json({
                 success: false,
                 message: error
@@ -61,7 +90,7 @@ export class CategoryController {
     }
 
     @Put('/:id')
-    async updateCategory(@Param("id") id: number, @Body() body: { name: string}, @Res() res: Response) {
+    async updateCategory(@Param("id") id: number, @Body() body: { name: string, description: string }, @Res() res: Response) {
         try {
             const { error } = createSchema.validate(body);
             if (error) {
@@ -71,10 +100,10 @@ export class CategoryController {
                 });
             }
 
-            const { name } = body;
+            const { name, description } = body;
             await prisma.category.update({
                 where: { id },
-                data: { name }
+                data: { name, description }
             });
 
             return res.status(201).json({
@@ -83,7 +112,15 @@ export class CategoryController {
             });
 
         } catch (error) {
-            return res.status(500).json({
+
+            if (error?.code == 'P2002') {
+                return res.status(400).json({
+                    success: false,
+                    message: `${body?.name} category already exist`
+                });
+            }
+
+            return res.status(400).json({
                 success: false,
                 message: error
             });
@@ -103,7 +140,7 @@ export class CategoryController {
                 message: 'Product deleted successfully.'
             });
         } catch (error) {
-            return res.status(500).json({
+            return res.status(400).json({
                 success: false,
                 message: error
             });

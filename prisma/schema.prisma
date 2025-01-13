@@ -38,6 +38,8 @@ model User {
 model Category {
   id Int @id @default(autoincrement())
   name String @unique
+  description String?
+  type CategoryType @default(BLOG)
   createdAt DateTime @default(now())
   posts Post[]
   products Product[]
@@ -135,6 +137,14 @@ model Payment {
 
 }
 
+model Brand {
+  id Int @id @default(autoincrement())
+  name String @unique
+  description String?
+  image String?
+  createdAt DateTime @default(now())
+}
+
 enum UserStatus {
   ACTIVE
   DEACTIVE
@@ -168,4 +178,9 @@ enum PayStatus {
   FAILED
   PENDING
   SUCCESS
+}
+
+enum CategoryType {
+  PRODUCT
+  BLOG
 }

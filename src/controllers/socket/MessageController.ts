@@ -23,7 +23,6 @@ export class MessageController {
 
     @OnConnect()
     async connection(@ConnectedSocket() socket: Socket) {
-        // console.log('user: ', user);
         console.log('client connected with id: ', socket.id);
     }
 
