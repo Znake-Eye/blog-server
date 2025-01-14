@@ -61,7 +61,7 @@ export class AuthController {
                 })
             }
 
-            const accessToken = auth.createAccessToken(user.id, user.username);
+            const accessToken = auth.createAccessToken(user.id, user.username, user.roleType);
 
             await prisma.user.update({
                 where: { id: user.id },
@@ -121,7 +121,7 @@ export class AuthController {
                     ...(phone && { phone: phone })
                 }
             });
-            const token = auth.createAccessToken(createUser.id, createUser.username);
+            const token = auth.createAccessToken(createUser.id, createUser.username, createUser.roleType);
             const updateUser = await prisma.user.update({
                 where: {id: createUser.id},
                 data: {currentToken: token}

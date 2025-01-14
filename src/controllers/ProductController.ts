@@ -11,10 +11,11 @@ import {
     Param,
     UnauthorizedError,
     BadRequestError,
-    Delete
+    Delete,
+    QueryParam
 } from "routing-controllers";
 import { Response } from "express";
-import { PrismaClient, User } from "@prisma/client";
+import { PrismaClient, User, StockSTatus } from "@prisma/client";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
@@ -25,7 +26,13 @@ import { TUser } from "../types";
 
 const productSchema = Joi.object({
     name: Joi.string().required(),
-    description: Joi.string().optional(),
+    description: Joi.string().allow('').optional(),
+    categoryId: Joi.string().allow('').optional(),
+    brandId: Joi.string().allow('').optional(),
+    file: Joi.any().optional(),
+    price: Joi.string().required(),
+    discount: Joi.string().allow('').optional(),
+    stock_status: Joi.string().valid(StockSTatus.INSTOCK, StockSTatus.OUTSTOCK).required()
 });
 
 const prisma = new PrismaClient();
@@ -70,27 +77,146 @@ export class UploadController {
             throw new BadRequestError(error?.details[0]?.message);
         }
 
-        const { name, description } = body;
-        console.log('req file: ', req?.file);
+        const { name, description, categoryId, brandId, price, discount, stock_status } = body;
         const fileName = req?.file?.filename || '';
         try {
-            await prisma.product.create({
+            const product = await prisma.product.create({
                 data: {
                     name,
                     userId: user.id,
                     description,
+                    categoryId: Number(categoryId) || null,
+                    brandId: Number(brandId) || null,
+                    price: Number(price) || 0,
+                    discount: Number(discount) || 0,
+                    stock_status,
                     image: fileName,
                 }
             });
 
             return res.status(201).json({
                 success: true,
+                data: product,
                 message: 'Product created successfully',
             })
         } catch (error) {
+            console.log('error: ', error);
             return res.status(400).json({
                 success: false,
-                message: error?.message
+                message: error
+            });
+        }
+    }
+    @Get('/all')
+    async getAllProduct(
+        @QueryParam("search") search: string = "",
+        @QueryParam("pageSize") pageSize: number = 15,
+        @QueryParam('page') page: number = 1,
+        @QueryParam('stock_status') stock_status: string = "",
+        @QueryParam('brandId') brandId: string = '',
+        @QueryParam('categoryId') categoryId: string = '',
+        @CurrentUser() user: TUser,
+        @Res() res: Response
+    ) {
+        try {
+            const skipAmount = (page - 1) * pageSize;
+
+            const AndFilter: any[] = [{
+                OR: [
+                    { name: { contains: search, mode: 'insensitive' }},
+                    { description: { contains: search, mode: 'insensitive' }},
+                ]
+            }];
+
+            if (stock_status) {
+                AndFilter.push({ stock_status });
+            }
+
+            if (brandId) {
+                AndFilter.push({ brandId: Number(brandId) });
+            }
+
+            if (categoryId) {
+                AndFilter.push({ categoryId: Number(categoryId) });
+            }
+
+            const [products, totalProducts] = await Promise.all([
+                prisma.product.findMany({
+                    where: {
+                        AND: AndFilter
+                    },
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        image: true,
+                        price: true,
+                        stock_status: true,
+                        createdAt: true,
+                        discount: true,
+                        brand: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        },
+                        category: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        },
+                        user: {
+                            select: {
+                                id: true,
+                                image: true,
+                                username: true
+                            }
+                        },
+                        favorites: {
+                            where: {
+                                userId: user.id
+                            },
+                            select: {
+                                status: true
+                            }
+                        },
+                        // _count: {
+                        //     select: {
+                        //         favorites: true
+                        //     }
+                        // }
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    skip: skipAmount,
+                    take: pageSize
+                }),
+
+                prisma.product.count({
+                    where: {
+                        AND: AndFilter
+                    }
+                }),
+
+            ]);
+
+            const pagination = {
+                totalPages: Math.ceil(totalProducts / pageSize),
+                currentPage: page,
+                item: totalProducts,
+                pageSize,
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: products,
+                pagination,
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                error: error?.message
             });
         }
     }
@@ -101,11 +227,24 @@ export class UploadController {
                 select: {
                     id: true,
                     name: true,
+                    description: true,
                     image: true,
                     price: true,
                     stock_status: true,
                     createdAt: true,
                     discount: true,
+                    brand: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    },
+                    category: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    },
                     user: {
                         select: {
                             id: true,
@@ -209,19 +348,20 @@ export class UploadController {
             if (!product) {
                 return res.status(400).json({ success: false, message: 'Product not founded.'});
             }
-            if (product.userId !== user.id) {
+
+            if (product.userId !== user.id && user?.roleType !== 'ADMIN') {
                 throw new UnauthorizedError('Unauthorize to delete this product.')
             }
+
+            await prisma.product.delete({
+                where: { id }
+            });
 
             if (product.image) {
                 const imageLocation = path.join(storeFolder, product.image);
                 const isFileRemoved = removeFile(imageLocation);
                 console.log(`file has been removed: ${isFileRemoved}`);
             }
-
-            await prisma.product.delete({
-                where: { id }
-            });
             
             return res.status(200).json({
                 success: true,
