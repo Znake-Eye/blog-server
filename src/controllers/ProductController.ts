@@ -300,7 +300,7 @@ export class UploadController {
                 });
             }
     
-            if (user.id !== product.userId) {
+            if (user.id !== product.userId && user?.roleType !== 'ADMIN') {
                 throw new UnauthorizedError('Unauthorize to edit this product.');
             }
 
@@ -310,27 +310,35 @@ export class UploadController {
             }
 
             const fileName = req?.file?.filename || '';
-            const data: any = {
-                name: body.name,
-                description: body.description,
-                ...(fileName && { image: fileName })
-            };
+
+            const { name, description, categoryId, brandId, price, discount, stock_status } = body;
+            
+            const editedProduct = await prisma.product.update({
+                where: { id },
+                data: {
+                    name,
+                    description,
+                    categoryId: Number(categoryId) || null,
+                    brandId: Number(brandId) || null,
+                    price: Number(price) || 0,
+                    discount: Number(discount) || 0,
+                    stock_status,
+                    ...(fileName && { image: fileName })
+                }
+            });
+
             if (fileName && product.image) {
                 const lastImageLocation = path.join(storeFolder, product.image);
                 const isFileRemoved = removeFile(lastImageLocation);
                 console.log(`file has been removed: ${isFileRemoved}`);
             }
-
-            const editedProduct = await prisma.product.update({
-                where: { id },
-                data
-            });
     
             return res.status(200).json({
                 success: true,
                 message: 'Edited product successfully',
                 data: editedProduct
             });
+            
         } catch (error) {
             return res.status(500).json({
                 success: false,
