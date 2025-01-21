@@ -34,6 +34,9 @@ export class CategoryController {
                             image: true,
                         }
                     }
+                },
+                orderBy: {
+                    createdAt: 'desc'
                 }
             });
             return res.status(200).json({
