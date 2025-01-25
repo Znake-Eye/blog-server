@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
-import { JsonController, Post, UseBefore, Get, Res, Body, CurrentUser } from "routing-controllers";
+import { JsonController, Post, UseBefore, Get, Res, Body, CurrentUser, QueryParam } from "routing-controllers";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 import Joi from "joi";
@@ -15,33 +15,61 @@ const createSchema = Joi.object({
 export class CategoryController {
 
     @Get('/')
-    async getFavorite(@CurrentUser() user: TUser ,@Res() res: Response) {
+    async getFavorite(
+        @QueryParam('page') page: number = 1,
+        @QueryParam('pageSize') pageSize: number = 10,
+        @QueryParam('search') search: string = '',
+        @CurrentUser() user: TUser,
+        @Res() res: Response
+    ) {
         try {
-            const data = await prisma.favorite.findMany({
-                where: {
-                    userId: user.id
-                },
-                select: {
-                    id: true,
-                    status: true,
-                    product: {
-                        select: {
-                            id: true,
-                            name: true,
-                            description: true,
-                            price: true,
-                            discount: true,
-                            image: true,
-                        }
+
+            const skipAmount = (page - 1) * pageSize;
+
+            const [total, data] = await Promise.all([
+                prisma.favorite.count({
+                    where: {
+                        userId: user.id,
                     }
-                },
-                orderBy: {
-                    createdAt: 'desc'
-                }
-            });
+                }),
+                prisma.favorite.findMany({
+                    where: {
+                        userId: user.id
+                    },
+                    select: {
+                        id: true,
+                        status: true,
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                price: true,
+                                discount: true,
+                                image: true,
+                            }
+                        }
+                    },
+                    skip: skipAmount,
+                    take: pageSize,
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }),
+            ])
+
+            const totalPage = Math.ceil(total / pageSize);
+
             return res.status(200).json({
                 success: true,
-                data
+                data,
+                pagination: {
+                    totalPages: totalPage,
+                    currentPage: page,
+                    item: total,
+                    pageSize
+                }
+                
             });
         } catch (error) {
             return res.status(500).json({
