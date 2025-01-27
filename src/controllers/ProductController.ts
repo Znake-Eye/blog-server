@@ -54,13 +54,13 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-    cb(null, true);
-    // const allowFileTypes= ['image/jpeg', 'image/png', 'image/jpg'];
-    // if(allowFileTypes.includes(file.mimetype)) {
-    //     cb(null, true);
-    // } else {
-    //     cb(new Error('Invalid file type'), false);
-    // }
+    // cb(null, true);
+    const allowFileTypes= ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if(allowFileTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('File type not allow. Please change the image.'), false);
+    }
 }
 
 const upload = multer({ storage, fileFilter });
@@ -69,7 +69,16 @@ const upload = multer({ storage, fileFilter });
 @UseBefore(AuthMiddleware)
 export class UploadController {
     @Post('/')
-    @UseBefore(upload.single('file'))
+    // @UseBefore(upload.single('file'))
+    @UseBefore((req, res, next) => upload.single('file')(req, res, (err) => {
+        if (err instanceof multer.MulterError || err instanceof Error) {
+            return res.status(400).json({
+                success: false,
+                message: err.message
+            });
+        }
+        next();
+    }))
     async createProduct(@Body() body: any, @Req() req: any, @CurrentUser() user: User, @Res() res: Response) {
 
         const { error } = productSchema.validate(body);
