@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
-import { JsonController, Post, UseBefore, Get, Res, Body, CurrentUser, Put, Param, Delete } from "routing-controllers";
+import { JsonController, Post, UseBefore, Get, Res, Body, CurrentUser, Put, Param, Delete, QueryParam } from "routing-controllers";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 import Joi from "joi";
@@ -17,16 +17,68 @@ const createSchema = Joi.object({
 export class CategoryController {
 
     @Get('/')
-    async getCart(@CurrentUser() user: TUser ,@Res() res: Response) {
+    async getCart(
+        @CurrentUser() user: TUser, 
+        @QueryParam('page') page: number = 1,
+        @QueryParam('pageSize') pageSize: number = 15,
+        @QueryParam('search') search: string = '',
+        @Res() res: Response
+    ) {
         try {
-            const data = await prisma.cart.findMany({
-                where: {
-                    userId: user?.id
-                }
-            });
+
+            const skipAmount = (page - 1) * pageSize;
+
+            const [total, data] = await Promise.all([
+                prisma.cart.count({
+                    where: {
+                        userId: user?.id
+                    }
+                }),
+                prisma.cart.findMany({
+                    where: {
+                        userId: user?.id
+                    },
+                    select: {
+                        id: true,
+                        item_price: true,
+                        qty: true,
+                        product: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        username: true,
+                                        image: true,
+                                    }
+                                },
+                                brand: {
+                                    select: {
+                                        id: true,
+                                        name: true
+                                    }
+                                }
+                            }
+                        },
+                    },
+                    take: pageSize,
+                    skip: skipAmount,
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }),
+            ]);
+
+            const totalPage = Math.ceil(total / pageSize);
+
             return res.status(200).json({
                 success: true,
-                data
+                data,
+                pagination: {
+                    totalPages: totalPage,
+                    currentPage: page,
+                    item: total,
+                    pageSize
+                }
             });
         } catch (error) {
             return res.status(500).json({
