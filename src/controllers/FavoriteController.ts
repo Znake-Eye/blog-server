@@ -1,8 +1,7 @@
 import { Response } from "express";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { JsonController, Post, UseBefore, Get, Res, Body, CurrentUser, QueryParam } from "routing-controllers";
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../../prisma";
 import Joi from "joi";
 import { TUser } from "../types";
 

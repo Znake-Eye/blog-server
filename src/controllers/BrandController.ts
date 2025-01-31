@@ -1,13 +1,12 @@
 import { Response } from "express";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { JsonController, Post, UseBefore, Get, Res, Body, Put, Param, Delete, QueryParam, Req } from "routing-controllers";
-import { PrismaClient } from "@prisma/client";
-import fs from "fs";
-const prisma = new PrismaClient();
+import prisma from "../../prisma";
 import Joi from "joi";
 import path from "path";
-import multer from "multer";
 import { removeFile } from "../utils";
+import { MulterImageUploader } from "../lib/Multer";
+
 
 const createSchema = Joi.object({
     name: Joi.string().required(),
@@ -17,31 +16,7 @@ const createSchema = Joi.object({
 
 const rootDir = process.cwd();
 const storeFolder = path.join(rootDir, 'uploads', 'brands');
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        if(!fs.existsSync(storeFolder)) {
-            fs.mkdirSync(storeFolder, { recursive: true});
-        }
-        cb(null, './uploads/brands');
-    },
-    filename: (req, file, cb) => {
-        const fileName = `${Date.now()}-${file.originalname}`
-        cb(null, `${fileName}`);
-    }
-});
-
-const fileFilter = (req, file, cb) => {
-    // cb(null, true);
-    const allowFileTypes= ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
-    if(allowFileTypes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Invalid file type'), false);
-    }
-}
-const upload = multer({ storage, fileFilter });
-
+const multerService = new MulterImageUploader(storeFolder);
 
 @JsonController('/brand')
 @UseBefore(AuthMiddleware)
@@ -71,7 +46,7 @@ export class BrandController {
     }
 
     @Post('/')
-    @UseBefore(upload.single('file'))
+    @UseBefore(multerService.upload.single('file'))
     async createBrand(@Req() req: any, @Body() body: { name: string, description: string, file: any } ,@Res() res: Response) {
 
         try {
@@ -116,7 +91,7 @@ export class BrandController {
     }
 
     @Put('/:id')
-    @UseBefore(upload.single('file'))
+    @UseBefore(multerService.upload.single('file'))
     async updateBrand(@Param("id") id: number, @Req() req: any, @Body() body: { name: string, description: string, file: any }, @Res() res: Response) {
         try {
             const { error } = createSchema.validate(body);

@@ -1,8 +1,8 @@
 import { Response } from "express";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { JsonController, Post, UseBefore, Get, Res, Body, Put, Param, Delete, QueryParam } from "routing-controllers";
-import { CategoryType, PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import { CategoryType } from "@prisma/client";
+import prisma from "../../prisma";
 import Joi from "joi";
 
 const createSchema = Joi.object({

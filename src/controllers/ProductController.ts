@@ -15,14 +15,15 @@ import {
     QueryParam
 } from "routing-controllers";
 import { Response } from "express";
-import { PrismaClient, User, StockSTatus } from "@prisma/client";
-import fs from "fs";
+import { User, StockSTatus } from "@prisma/client";
 import path from "path";
 import multer from "multer";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { removeFile } from "../utils";
 import Joi from "joi";
+import prisma from "../../prisma";
 import { TUser } from "../types";
+import { MulterImageUploader } from "../lib/Multer";
 
 const productSchema = Joi.object({
     name: Joi.string().required(),
@@ -35,42 +36,16 @@ const productSchema = Joi.object({
     stock_status: Joi.string().valid(StockSTatus.INSTOCK, StockSTatus.OUTSTOCK).required()
 });
 
-const prisma = new PrismaClient();
-
 const rootDir = process.cwd();
 const storeFolder = path.join(rootDir, 'uploads', 'products');
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        if(!fs.existsSync(storeFolder)) {
-            fs.mkdirSync(storeFolder, { recursive: true});
-        }
-        cb(null, './uploads/products');
-    },
-    filename: (req, file, cb) => {
-        const fileName = `${Date.now()}-${file.originalname}`
-        cb(null, `${fileName}`);
-    }
-});
-
-const fileFilter = (req, file, cb) => {
-    // cb(null, true);
-    const allowFileTypes= ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
-    if(allowFileTypes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error('File type not allow. Please change the image.'), false);
-    }
-}
-
-const upload = multer({ storage, fileFilter });
+const multerService = new MulterImageUploader(storeFolder); 
 
 @JsonController('/product')
 @UseBefore(AuthMiddleware)
 export class UploadController {
     @Post('/')
     // @UseBefore(upload.single('file'))
-    @UseBefore((req, res, next) => upload.single('file')(req, res, (err) => {
+    @UseBefore((req, res, next) => multerService.upload.single('file')(req, res, (err) => {
         if (err instanceof multer.MulterError || err instanceof Error) {
             return res.status(400).json({
                 success: false,
@@ -288,7 +263,7 @@ export class UploadController {
         }
     }
     @Put('/:id')
-    @UseBefore(upload.single('file'))
+    @UseBefore(multerService.upload.single('file'))
     async updateProduct(
         @Param("id") id: number,
         @Body({ required: true}) body: any, 

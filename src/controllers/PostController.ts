@@ -16,10 +16,9 @@ import { Response } from "express";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { TUser, TPost } from "../types";
 import { resultStatus } from "../enums";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../prisma";
 import Joi from "joi";
 
-const prisma = new PrismaClient();
 const postSchema = Joi.object({
     title: Joi.string().min(3).max(100).required(),
     published: Joi.boolean().required(),

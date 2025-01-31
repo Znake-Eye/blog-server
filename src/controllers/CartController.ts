@@ -1,8 +1,7 @@
 import { Response } from "express";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { JsonController, Post, UseBefore, Get, Res, Body, CurrentUser, Put, Param, Delete, QueryParam } from "routing-controllers";
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../../prisma";
 import Joi from "joi";
 import { TUser } from "../types";
 
@@ -151,25 +150,32 @@ export class CategoryController {
         }
 
         try {
-            if (body?.qty > 0) {
-                await prisma.cart.update({
-                    where: { id },
-                    data: {
-                        qty: { increment: body.qty }
-                    }
-                });
-            } else if (body?.qty < 0) {
-                await prisma.cart.update({
-                    where: { id },
-                    data: {
-                        qty: { decrement: body.qty }
-                    }
-                });
-            }
+            const data = await prisma.cart.update({
+                where: { id },
+                data: {
+                    qty: Number(body.qty)
+                }
+            });
+            // if (body?.qty > 0) {
+            //     await prisma.cart.update({
+            //         where: { id },
+            //         data: {
+            //             qty: { increment: body.qty }
+            //         }
+            //     });
+            // } else if (body?.qty < 0) {
+            //     await prisma.cart.update({
+            //         where: { id },
+            //         data: {
+            //             qty: { decrement: body.qty }
+            //         }
+            //     });
+            // }
 
             return res.status(200).json({
                 success: true,
-                message: 'Save successfully.'
+                message: 'Save successfully.',
+                data
             });
 
         } catch (error) {

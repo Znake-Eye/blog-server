@@ -12,7 +12,8 @@ import {
     CurrentUser
 } from "routing-controllers";
 import { Response } from "express";
-import { PrismaClient, User } from "@prisma/client";
+import { User } from "@prisma/client";
+import prisma from "../../prisma";
 import { TUser } from "../types";
 import { encryptPassword } from "../utils/encryptPassword";
 import { resultStatus } from "../enums";
@@ -21,7 +22,6 @@ import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import * as nodeMailer from "nodemailer";
 import Joi from "joi";
 
-const prisma = new PrismaClient();
 const sendGmailSchema = Joi.object({
     to: Joi.string().required(),
     subject: Joi.string().optional(),

@@ -8,7 +8,7 @@ import {
     UnauthorizedError,
 } from "routing-controllers";
 import { Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../prisma";
 import Joi from "joi";
 import bcrypt from "bcrypt";
 import auth from "../utils/Auth";
@@ -26,8 +26,6 @@ const createUserSchema = Joi.object({
     email: Joi.string().optional(),
     phone: Joi.string().optional(),
 });
-
-const prisma = new PrismaClient();
 
 @JsonController("/user")
 export class AuthController {
@@ -158,8 +156,5 @@ export class AuthController {
         //     data: 'Hello world'
         // })
     }
-
-    
-
 
 }
