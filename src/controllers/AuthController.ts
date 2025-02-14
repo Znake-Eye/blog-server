@@ -4,8 +4,8 @@ import {
     Post,
     Get,
     Res,
-    NotFoundError,
     UnauthorizedError,
+    UseBefore,
 } from "routing-controllers";
 import { Response } from "express";
 import prisma from "../../prisma";
@@ -14,6 +14,7 @@ import bcrypt from "bcrypt";
 import auth from "../utils/Auth";
 import { resultStatus } from "../enums";
 import { encryptPassword } from "../utils/encryptPassword";
+import { authLimiter } from "../middleware/Limiter";
 
 const schema = Joi.object({
     username: Joi.string().min(3).required(),
@@ -28,6 +29,7 @@ const createUserSchema = Joi.object({
 });
 
 @JsonController("/user")
+@UseBefore(authLimiter)
 export class AuthController {
 
     @Post("/login")

@@ -20,7 +20,7 @@ import path from "path";
 import multer from "multer";
 import { AuthMiddleware } from "../middleware/AuthMiddleware";
 import { removeFile } from "../utils";
-import Joi from "joi";
+import Joi, { number } from "joi";
 import prisma from "../../prisma";
 import { TUser } from "../types";
 import { MulterImageUploader } from "../lib/Multer";
@@ -262,6 +262,69 @@ export class UploadController {
             });
         }
     }
+
+    @Get('/getProductByUserId/:id') 
+    async getProductByUserId(
+        @Param("id") id: number,
+        @QueryParam('page') page: number = 1,
+        @QueryParam('pageSize') pageSize: number = 15,
+        @QueryParam('search') search: string = '',
+        @Res() res: Response
+    ) {
+        try {
+            const skipAmount = (page - 1) * pageSize;
+            const [total, products] = await Promise.all([
+                prisma.product.count({
+                    where: {
+                        AND: [
+                            {
+                                OR: [
+                                    { name: { contains: search, mode: 'insensitive' }},
+                                    { description: { contains: search, mode: 'insensitive' }},
+                                ]
+                            },
+                            { userId: id }
+                        ]
+                    },
+                }),
+                prisma.product.findMany({
+                    where: {
+                        AND: [
+                            {
+                                OR: [
+                                    { name: { contains: search, mode: 'insensitive' }},
+                                    { description: { contains: search, mode: 'insensitive' }},
+                                ]
+                            },
+                            { userId: id }
+                        ]
+                    },
+                    skip: skipAmount,
+                    take: pageSize
+                })
+            ]);
+
+            const totalPages = Math.ceil(total / Number(pageSize));
+
+            return res.status(200).json({
+                success: true,
+                data: products,
+                pagination: {
+                    totalPages,
+                    currentPage: page,
+                    item: total
+                }
+            });
+
+        } catch (error) {
+            console.log(error);
+            return res.status(500).json({
+                success: false,
+                message: error
+            });
+        }
+    }
+
     @Put('/:id')
     @UseBefore(multerService.upload.single('file'))
     async updateProduct(
